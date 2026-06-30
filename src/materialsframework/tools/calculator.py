@@ -13,6 +13,9 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import TYPE_CHECKING
 
+from pathlib import Path
+from ase.io import write
+
 from ase.constraints import FixAtoms, FixSymmetry
 from ase.filters import FrechetCellFilter
 from ase.optimize import BFGS, FIRE, LBFGS, BFGSLineSearch, LBFGSLineSearch, MDMin
@@ -236,15 +239,41 @@ class BaseCalculator(ABC):
                     hydrostatic_strain=self.hydrostatic_strain,
                     **params_asecellfilter,
                 )
+            # optimizer = self.optimizer(atoms, **kwargs)
+            # optimizer.attach(obs, interval=self.interval)
+            # optimizer.run(fmax=self.fmax, steps=self.steps)
+            # obs()
             optimizer = self.optimizer(atoms, **kwargs)
             optimizer.attach(obs, interval=self.interval)
+
+            if self.traj_file:
+                from pathlib import Path
+                from ase.io import write
+
+                traj_path = Path(self.traj_file)
+
+                # Force OVITO-readable extension
+                if traj_path.suffix != ".xyz":
+                    traj_path = traj_path.with_suffix(".xyz")
+
+                if traj_path.exists():
+                    traj_path.unlink()
+
+                def save_xyz_frame():
+                    current_atoms = atoms.atoms if isinstance(atoms, FrechetCellFilter) else atoms
+                    write(traj_path, current_atoms, format="extxyz", append=True)
+
+                optimizer.attach(save_xyz_frame, interval=self.interval)
+
             optimizer.run(fmax=self.fmax, steps=self.steps)
             obs()
 
             self.converged = optimizer.nsteps < self.steps
 
+        # if self.traj_file:
+        #     obs.save(self.traj_file)
         if self.traj_file:
-            obs.save(self.traj_file)
+            obs.save(str(Path(self.traj_file).with_suffix(".pkl")))
 
         if isinstance(atoms, FrechetCellFilter):
             atoms = atoms.atoms
