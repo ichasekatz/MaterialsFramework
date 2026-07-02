@@ -729,7 +729,6 @@ DOSTATIC
 
             if len(self.species) == 1:
                 self._copy_sqs_folders_from_atat(lattice)
-                self._replace_constant_elements_in_sqs_files(lattice_path)
 
             if isinstance(self.sqsgen_levels2, dict):
                 levels2 = self.sqsgen_levels2.get(lattice_base, [])
