@@ -727,8 +727,8 @@ DOSTATIC
                 except Exception as e:
                     print(f"Failed to build POSCAR from str.in for {local_dir.name}: {e}")
 
-            if len(self.species) == 1:
-                self._copy_sqs_folders_from_atat(lattice)
+            # _copy_sqs_folders_from_atat is intentionally skipped — the extra
+            # sqsdb-renamed dirs it creates are redundant with sqs2tdb -cp output
 
             if isinstance(self.sqsgen_levels2, dict):
                 levels2 = self.sqsgen_levels2.get(lattice_base, [])
