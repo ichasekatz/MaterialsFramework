@@ -312,6 +312,18 @@ DOSTATIC
                 res["final_structure"],
             )
 
+            if self.track_trajectory and traj_path.exists():
+                import shutil as _shutil, json as _json
+                final_path = traj_path.parent / "relaxation_final.xyz"
+                _shutil.copy2(traj_path, final_path)
+                n_frames = sum(1 for ln in traj_path.open() if ln.strip().isdigit())
+                (traj_path.parent / "relaxation_info.json").write_text(
+                    _json.dumps({
+                        "nsteps": n_frames,
+                        "converged": bool(getattr(self.calculator, "converged", None)),
+                    })
+                )
+
         # Write energy
         (subdir / "energy").write_text(f"{energy:.6f}")
 
