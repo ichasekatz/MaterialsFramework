@@ -13,6 +13,7 @@ least one registered calculator (default: ``ORBCalculator``; GRACE via
 ``BladeTDBGen.tdb_params["calculator"]``).
 """
 
+import json
 import os
 import re
 import shutil
@@ -83,6 +84,8 @@ DOSTATIC
                 structure relaxation. Defaults to 0.001.
             verbose (bool, optional): Print calculator and command output.
                 Defaults to False.
+            track_trajectory (bool, optional): Write an XYZ trajectory during
+                MLIP relaxation (``relaxation_live.xyz``). Defaults to True.
             calculator (BaseCalculator | BaseMDCalculator | None, optional):
                 Energy/force/stress calculator. Defaults to
                 ``ORBCalculator`` when ``None``.
@@ -313,12 +316,11 @@ DOSTATIC
             )
 
             if self.track_trajectory and traj_path.exists():
-                import shutil as _shutil, json as _json
                 final_path = traj_path.parent / "relaxation_final.xyz"
-                _shutil.copy2(traj_path, final_path)
+                shutil.copy2(traj_path, final_path)
                 n_frames = sum(1 for ln in traj_path.open() if ln.strip().isdigit())
                 (traj_path.parent / "relaxation_info.json").write_text(
-                    _json.dumps({
+                    json.dumps({
                         "nsteps": n_frames,
                         "converged": bool(getattr(self.calculator, "converged", None)),
                     })
