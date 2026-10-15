@@ -13,9 +13,6 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from pathlib import Path
-from ase.io import write
-
 from ase.constraints import FixAtoms, FixSymmetry
 from ase.filters import FrechetCellFilter
 from ase.optimize import BFGS, FIRE, LBFGS, BFGSLineSearch, LBFGSLineSearch, MDMin
@@ -248,6 +245,7 @@ class BaseCalculator(ABC):
 
             if self.traj_file:
                 from pathlib import Path
+
                 from ase.io import write
 
                 traj_path = Path(self.traj_file)

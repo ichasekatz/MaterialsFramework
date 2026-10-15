@@ -27,8 +27,6 @@ from pymatgen.core import Structure
 from materialsframework.tools.calculator import BaseCalculator
 from materialsframework.tools.md import BaseMDCalculator
 
-from blade.tools.blade_sqsgen import BladeSQS
-
 __author__ = "Doguhan Sariturk"
 __email__ = "dogu.sariturk@gmail.com"
 
@@ -142,7 +140,7 @@ DOSTATIC
         sublattice_map: dict[str, dict[str, list[str]]] | None = None,
         skip_existing: bool = False,
     ) -> None:
-        """Copy SQS from the database to the current directory, calculate energies, and fit a TDB model.
+        r"""Copy SQS from the database to the current directory, calculate energies, and fit a TDB model.
 
         Args:
             species (list): List of elements to consider (e.g., ["Al", "Ni"]).
@@ -161,6 +159,10 @@ DOSTATIC
             sublattice_map (dict | None): Active species per sublattice per phase, e.g.
                 ``{"FCC2": {"a": ["Cr","Hf"], "b": ["Zr","Ti"]}}``. When provided for a phase,
                 species.in is overwritten after the first ``sqs2tdb -cp`` call.
+            paths: Paths configuration passed to the fitter.
+            sqsgen_levels2: Composition level definitions for SQS generation.
+            mult_in (dict[str, str] | None): Per-phase mult.in content keyed by lattice base name.
+                Overrides the auto-generated mult.in for matching phases.
             skip_existing (bool): If True, skip compositions that already have computed structures.
                 Defaults to False.
 
@@ -197,11 +199,11 @@ DOSTATIC
         if callable(getattr(self, "post_copy_hook", None)):
             self.post_copy_hook()
         self._fit_model()
-    
+
         args = ["-tdb"] + (["-oc"] if open_calphad else [])
-        tdb_mtimes_before = {f.name: f.stat().st_mtime for f in Path(".").glob("*.tdb")}
+        tdb_mtimes_before = {f.name: f.stat().st_mtime for f in Path().glob("*.tdb")}
         self._run_command("sqs2tdb", args, timeout=None)
-        tdb_mtimes_after = {f.name: f.stat().st_mtime for f in Path(".").glob("*.tdb")}
+        tdb_mtimes_after = {f.name: f.stat().st_mtime for f in Path().glob("*.tdb")}
 
         try:
             from pycalphad import Database
@@ -356,6 +358,7 @@ DOSTATIC
             command (str): The command to execute.
             args (list[str]): A list of arguments for the command.
             cwd (str | None): The working directory for the command.
+            timeout (int | None): Seconds before the command is killed. Defaults to 60.
         """
         try:
             proc = subprocess.Popen(
@@ -431,7 +434,7 @@ DOSTATIC
                     new_file = sqsdir.parent / f"{sqsdir.name}{tag}"
                     sqsdir.rename(new_file)
                     print(f"Renamed {sqsdir} -> {new_file}")
-                
+
 
     def _copy_sqs_folders_from_atat(self, lattice):
         src_lattice = Path(self.path2) / lattice
@@ -615,7 +618,7 @@ DOSTATIC
                             existing_els.add(el)
                     comp_species_in.write_text(existing + "\n")
 
-            print('sqs2tdb -cp completed for lattice:', lattice)
+            print("sqs2tdb -cp completed for lattice:", lattice)
 
             # Second -cp: reads species.in and creates sqs_lev dirs.
             # When a fixed composition is requested (dir_filter set), ATAT still generates
@@ -626,7 +629,7 @@ DOSTATIC
             # avoid creating all remaining permutations.
             if callable(getattr(self, "dir_filter", None)):
                 import time as _time
-                print(f"[dir_filter] Running sqs2tdb -cp in background; will delete non-matching dirs as they appear and stop early once match is found.")
+                print("[dir_filter] Running sqs2tdb -cp in background; will delete non-matching dirs as they appear and stop early once match is found.")
                 # No stdout/stderr pipes so ATAT doesn't block on buffer fills
                 proc = subprocess.Popen(
                     ["sqs2tdb", "-cp", f"-l={lattice}", f"-lv={self.level}", f"-sp={species_str}"],
@@ -685,7 +688,7 @@ DOSTATIC
                     timeout=None,
                 )
 
-            print('sqs2tdb -cp completed for lattice:', lattice)
+            print("sqs2tdb -cp completed for lattice:", lattice)
 
             # Build POSCAR from str.in for local sqs_lev dirs that don't have one yet.
             # str.in is ATAT format with generic labels (a_A, a_B, b_A, B, C, ...).
@@ -699,7 +702,7 @@ DOSTATIC
                 # Build generic-label → element mapping from dir name
                 # e.g. a_Cr=0.875,a_Hf=0.125,b_B=1.0 → {a_A:Cr, a_B:Hf, b_A:B} (sorted desc frac)
                 el_fracs: list[tuple[str, str, float]] = []
-                for m in re.finditer(r'([a-z])_([A-Z][a-z]?)=([\d.]+)', local_dir.name):
+                for m in re.finditer(r"([a-z])_([A-Z][a-z]?)=([\d.]+)", local_dir.name):
                     letter, el, frac = m.group(1), m.group(2), float(m.group(3))
                     el_fracs.append((letter, el, frac))
                 # Group by sublattice letter, sort each group descending by frac → A,B,C...
@@ -734,7 +737,8 @@ DOSTATIC
                         el = label_map.get(raw_label, raw_label)
                         frac_list.append(cart @ inv_lat)
                         species_list.append(el)
-                    from pymatgen.core import Lattice as _Lat, Structure as _Str
+                    from pymatgen.core import Lattice as _Lat
+                    from pymatgen.core import Structure as _Str
                     structure = _Str(_Lat(cart_lat), species_list, frac_list, coords_are_cartesian=False)
                     structure.to(filename=str(local_dir / "POSCAR"), fmt="poscar")
                     print(f"Built POSCAR from str.in: {local_dir.name}")
@@ -841,4 +845,3 @@ DOSTATIC
                 (lattice_path / "mult.in").write_text(self.mult_in[lattice_base])
 
             self._run_command("sqs2tdb", args, cwd=lattice_path, timeout=None)
-            
