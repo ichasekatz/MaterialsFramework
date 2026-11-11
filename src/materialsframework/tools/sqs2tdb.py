@@ -754,6 +754,9 @@ DOSTATIC
                 levels2 = self.sqsgen_levels2
             self._rename_files(levels2, lattice_path)
 
+            if callable(getattr(self, "post_rename_hook", None)):
+                self.post_rename_hook(lattice_path)
+
             for wait_file in lattice_path.glob("*/wait"):
                 subdir = wait_file.parent
                 if not subdir.exists():
