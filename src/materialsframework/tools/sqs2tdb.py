@@ -612,7 +612,7 @@ DOSTATIC
                 if comp_species_in.exists():
                     existing = comp_species_in.read_text().strip()
                     existing_els = set(existing.split(","))
-                    for el in sorted({el for els in smap.values() for el in els}):
+                    for el in sorted({el for els in filtered.values() for el in els}):
                         if el not in existing_els:
                             existing = existing + f",{el}"
                             existing_els.add(el)
