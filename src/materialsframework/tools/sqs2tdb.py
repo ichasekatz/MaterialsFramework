@@ -229,7 +229,26 @@ DOSTATIC
             tdb_filename = "_".join(sorted([s.upper() for s in self.species])) + ".tdb"
             tdb_path = Path(tdb_filename)
         self._add_oxygen_element_if_needed(tdb_path)
+        self._fill_empty_parameters(tdb_path)
         self.dbf = Database(tdb_path)
+
+    @staticmethod
+    def _fill_empty_parameters(tdb_path: Path) -> None:
+        """Replace empty PARAMETER expressions written by ``sqs2tdb -tdb`` with ``+0.0``.
+
+        ATAT writes a fitted coefficient of exactly zero (e.g. the L1 term of a
+        symmetric binary) or an unfittable term as an empty expression,
+        ``PARAMETER L(...) 298.15  ; 10000.0 N REF888 !``, which pycalphad rejects
+        as invalid TDB syntax. A zero value is the intended meaning.
+        """
+        path = Path(tdb_path)
+        if not path.exists():
+            return
+        text = path.read_text()
+        fixed, n = re.subn(r"(PARAMETER\s+\S+\s+[0-9.]+)\s+;", r"\1 +0.0 ;", text)
+        if n:
+            path.write_text(fixed)
+            print(f"Filled {n} empty PARAMETER expression(s) with +0.0 in {path.name}")
 
     @property
     def available_lattices(self) -> list[str]:
